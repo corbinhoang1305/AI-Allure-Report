@@ -1,0 +1,176 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: qualify-postgres
+    environment:
+      POSTGRES_USER: qualify
+      POSTGRES_PASSWORD: qualify_password
+      POSTGRES_DB: qualify_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qualify -d qualify_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: qualify-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: qualify-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ../../
+      dockerfile: backend/services/auth-service/Dockerfile
+    container_name: qualify-auth
+    environment:
+      DATABASE_URL: postgresql+asyncpg://qualify:qualify_password@postgres:5432/qualify_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: your-secret-key-change-in-production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Report Aggregator Service
+  report-aggregator:
+    build:
+      context: ../../
+      dockerfile: backend/services/report-aggregator/Dockerfile
+    container_name: qualify-aggregator
+    environment:
+      DATABASE_URL: postgresql+asyncpg://qualify:qualify_password@postgres:5432/qualify_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: your-secret-key-change-in-production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      ALLURE_REPORTS_PATH: /app/allure-reports
+      SCAN_INTERVAL_MINUTES: 2
+    ports:
+      - "8002:8002"
+    volumes:
+      - D:/allure-reports:/app/allure-reports:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # AI Analysis Service
+  ai-analysis:
+    build:
+      context: ../../
+      dockerfile: backend/services/ai-analysis-service/Dockerfile
+    container_name: qualify-ai
+    environment:
+      DATABASE_URL: postgresql+asyncpg://qualify:qualify_password@postgres:5432/qualify_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: your-secret-key-change-in-production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Analytics Service
+  analytics:
+    build:
+      context: ../../
+      dockerfile: backend/services/analytics-service/Dockerfile
+    container_name: qualify-analytics
+    environment:
+      DATABASE_URL: postgresql+asyncpg://qualify:qualify_password@postgres:5432/qualify_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: your-secret-key-change-in-production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nginx API Gateway (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: qualify-nginx
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - report-aggregator
+      - ai-analysis
+      - analytics
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  default:
+    name: qualify-network
+

@@ -1,0 +1,167 @@
+[
+  {
+    "uuid": "test-001",
+    "name": "test_user_login_success",
+    "fullName": "tests.auth.test_user_login_success",
+    "status": "passed",
+    "statusDetails": {
+      "message": "Test passed successfully"
+    },
+    "start": 1699900000000,
+    "stop": 1699900005000,
+    "labels": [
+      {"name": "suite", "value": "Authentication"},
+      {"name": "severity", "value": "critical"},
+      {"name": "tag", "value": "smoke"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-002",
+    "name": "test_user_login_invalid_password",
+    "fullName": "tests.auth.test_user_login_invalid_password",
+    "status": "passed",
+    "statusDetails": {
+      "message": "Test passed - correct error message shown"
+    },
+    "start": 1699900006000,
+    "stop": 1699900009000,
+    "labels": [
+      {"name": "suite", "value": "Authentication"},
+      {"name": "severity", "value": "normal"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-003",
+    "name": "test_user_logout",
+    "fullName": "tests.auth.test_user_logout",
+    "status": "failed",
+    "statusDetails": {
+      "message": "AssertionError: Logout button not found",
+      "trace": "File 'tests/auth.py', line 45\n  assert logout_button.is_displayed()\nAssertionError"
+    },
+    "start": 1699900010000,
+    "stop": 1699900015000,
+    "labels": [
+      {"name": "suite", "value": "Authentication"},
+      {"name": "severity", "value": "critical"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-004",
+    "name": "test_checkout_process",
+    "fullName": "tests.payment.test_checkout_process",
+    "status": "passed",
+    "statusDetails": {},
+    "start": 1699900016000,
+    "stop": 1699900025000,
+    "labels": [
+      {"name": "suite", "value": "Payment Gateway"},
+      {"name": "severity", "value": "blocker"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-005",
+    "name": "test_payment_gateway_timeout",
+    "fullName": "tests.payment.test_payment_gateway_timeout",
+    "status": "broken",
+    "statusDetails": {
+      "message": "TimeoutException: Connection timeout after 30 seconds",
+      "trace": "File 'tests/payment.py', line 120\n  response = payment_api.process()\nTimeoutException"
+    },
+    "start": 1699900026000,
+    "stop": 1699900056000,
+    "labels": [
+      {"name": "suite", "value": "Payment Gateway"},
+      {"name": "severity", "value": "critical"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-006",
+    "name": "test_product_search",
+    "fullName": "tests.products.test_product_search",
+    "status": "passed",
+    "statusDetails": {},
+    "start": 1699900060000,
+    "stop": 1699900063000,
+    "labels": [
+      {"name": "suite", "value": "Product Service"},
+      {"name": "severity", "value": "normal"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-007",
+    "name": "test_add_to_cart",
+    "fullName": "tests.cart.test_add_to_cart",
+    "status": "passed",
+    "statusDetails": {},
+    "start": 1699900064000,
+    "stop": 1699900067000,
+    "labels": [
+      {"name": "suite", "value": "Shopping Cart"},
+      {"name": "severity", "value": "critical"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-008",
+    "name": "test_remove_from_cart",
+    "fullName": "tests.cart.test_remove_from_cart",
+    "status": "passed",
+    "statusDetails": {},
+    "start": 1699900068000,
+    "stop": 1699900070000,
+    "labels": [
+      {"name": "suite", "value": "Shopping Cart"},
+      {"name": "severity", "value": "normal"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-009",
+    "name": "test_user_profile_update",
+    "fullName": "tests.user.test_user_profile_update",
+    "status": "failed",
+    "statusDetails": {
+      "message": "ValidationError: Email format is invalid",
+      "trace": "File 'tests/user.py', line 78\n  profile.update(email='invalid')\nValidationError"
+    },
+    "start": 1699900071000,
+    "stop": 1699900074000,
+    "labels": [
+      {"name": "suite", "value": "User Service"},
+      {"name": "severity", "value": "minor"}
+    ],
+    "parameters": [],
+    "attachments": []
+  },
+  {
+    "uuid": "test-010",
+    "name": "test_order_history",
+    "fullName": "tests.orders.test_order_history",
+    "status": "passed",
+    "statusDetails": {},
+    "start": 1699900075000,
+    "stop": 1699900080000,
+    "labels": [
+      {"name": "suite", "value": "Order Management"},
+      {"name": "severity", "value": "normal"}
+    ],
+    "parameters": [],
+    "attachments": []
+  }
+]
+

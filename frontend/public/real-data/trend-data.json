@@ -1,0 +1,14 @@
+﻿[
+    {
+        "date":  "10/11",
+        "total":  80,
+        "failed":  16,
+        "passed":  64
+    },
+    {
+        "date":  "13/11",
+        "total":  71,
+        "failed":  0,
+        "passed":  71
+    }
+]
