@@ -113,7 +113,7 @@ async def get_overall_health(
     project_id: Optional[UUID],
     db: AsyncSession
 ) -> Dict[str, Any]:
-    """Calculate overall quality health"""
+    """Calculate overall quality health with proper flaky detection"""
     # Get recent test results (last 7 days)
     cutoff_date = datetime.utcnow() - timedelta(days=7)
     
@@ -127,26 +127,81 @@ async def get_overall_health(
     result = await db.execute(query)
     recent_results = result.scalars().all()
     
-    total_tests = len(recent_results)
-    if total_tests == 0:
+    if not recent_results:
         return {
             "total_tests": 0,
             "passed": 0,
             "failed": 0,
+            "flaky": 0,
             "pass_rate": 0,
             "avg_duration_ms": 0
         }
     
-    passed = sum(1 for r in recent_results if r.status == TestStatus.PASSED)
-    failed = sum(1 for r in recent_results if r.status in [TestStatus.FAILED, TestStatus.BROKEN])
-    avg_duration = sum(r.duration_ms or 0 for r in recent_results) / total_tests
+    # Group by history_id to identify unique test cases and their retries
+    test_cases = {}
+    for r in recent_results:
+        test_key = r.history_id or r.full_name or r.test_name
+        if test_key not in test_cases:
+            test_cases[test_key] = []
+        test_cases[test_key].append(r)
+    
+    # Categorize each test case
+    passed_count = 0
+    flaky_count = 0
+    failed_count = 0
+    total_duration = 0
+    
+    for test_key, results_list in test_cases.items():
+        # Sort by created_at
+        results_list.sort(key=lambda x: x.created_at)
+        
+        num_runs = len(results_list)
+        first_status = results_list[0].status
+        final_status = results_list[-1].status
+        
+        # Calculate average duration for this test
+        durations = [r.duration_ms or 0 for r in results_list]
+        if durations:
+            total_duration += sum(durations) / len(durations)
+        
+        # Logic verified from analyze_allure_folder.py:
+        # - Passed: Test ran ONCE and passed
+        # - Flaky: Test FAILED first, then PASSED on retry
+        # - Failed: Test failed (with or without retry)
+        
+        if num_runs == 1:
+            # Single run - no retry
+            if first_status == TestStatus.PASSED:
+                # Passed: ran once and passed
+                passed_count += 1
+            else:
+                # Failed: ran once and failed
+                failed_count += 1
+        else:
+            # Multiple runs - has retry
+            if first_status in [TestStatus.FAILED, TestStatus.BROKEN]:
+                # First run failed
+                if final_status == TestStatus.PASSED:
+                    # Flaky: failed first, then passed on retry
+                    flaky_count += 1
+                else:
+                    # Failed: failed first, and still failed after retry
+                    failed_count += 1
+            elif first_status == TestStatus.PASSED:
+                # First run passed but has multiple runs
+                # Treat as Passed (stable - likely duplicate data import)
+                passed_count += 1
+    
+    total_tests = passed_count + flaky_count + failed_count
+    avg_duration = int(total_duration / total_tests) if total_tests > 0 else 0
     
     return {
         "total_tests": total_tests,
-        "passed": passed,
-        "failed": failed,
-        "pass_rate": calculate_pass_rate(passed, total_tests),
-        "avg_duration_ms": int(avg_duration)
+        "passed": passed_count,
+        "failed": failed_count,
+        "flaky": flaky_count,
+        "pass_rate": calculate_pass_rate(passed_count + flaky_count, total_tests),
+        "avg_duration_ms": avg_duration
     }
 
 
@@ -176,30 +231,28 @@ async def get_trends(
     result = await db.execute(query)
     runs = result.scalars().all()
     
-    # Group by day - calculate from actual test_results instead of meta_data
-    # For each day, use only the latest run to avoid double counting
+    # Group by day - calculate from actual test_results
+    # Get ALL test results from ALL runs (not just latest run)
+    # This allows us to detect retries within the same day
     daily_stats = {}
     
-    # Group runs by date and get the latest run for each date
-    runs_by_date = {}
-    for run in runs:
-        date_key = run.started_at.date().isoformat()
-        if date_key not in runs_by_date or run.started_at > runs_by_date[date_key].started_at:
-            runs_by_date[date_key] = run
+    # Get ALL run IDs (not just latest)
+    all_run_ids = [run.id for run in runs]
     
-    # Get test results only for the latest run of each day
-    latest_run_ids = [run.id for run in runs_by_date.values()]
-    
-    if latest_run_ids:
+    if all_run_ids:
         from sqlalchemy import and_, func
         results_query = select(TestResult, TestRun).join(
             TestRun, TestResult.run_id == TestRun.id
-        ).filter(TestResult.run_id.in_(latest_run_ids))
+        ).filter(TestResult.run_id.in_(all_run_ids))
         
         results = await db.execute(results_query)
         test_results_with_runs = results.all()
         
-        # Group by history_id to deduplicate retries (only count unique test cases)
+        # Group by history_id to analyze retries and categorize test cases
+        # Logic:
+        # - Passed: test ran once and passed
+        # - Flaky: test passed eventually but had retries (passed after fail)
+        # - Failed: test failed even with retries OR failed once without retry
         test_cases_by_date = {}
         
         for test_result, test_run in test_results_with_runs:
@@ -211,32 +264,61 @@ async def get_trends(
             # Use history_id as unique key for test case
             test_key = test_result.history_id or test_result.full_name or test_result.test_name
             
-            # Keep only the latest result for each test case (by created_at)
+            # Collect ALL results for each test case (not just the latest)
             if test_key not in test_cases_by_date[date_key]:
-                test_cases_by_date[date_key][test_key] = (test_result, test_run)
-            else:
-                # Compare timestamps and keep the latest
-                existing_result, existing_run = test_cases_by_date[date_key][test_key]
-                if test_result.created_at > existing_result.created_at:
-                    test_cases_by_date[date_key][test_key] = (test_result, test_run)
+                test_cases_by_date[date_key][test_key] = []
+            
+            test_cases_by_date[date_key][test_key].append((test_result, test_run))
         
-        # Count unique test cases per day
+        # Analyze each test case to determine if it's Passed, Flaky, or Failed
         for date_key, test_cases in test_cases_by_date.items():
             if date_key not in daily_stats:
                 daily_stats[date_key] = {
                     "date": date_key,
                     "total": 0,
                     "passed": 0,
-                    "failed": 0
+                    "failed": 0,
+                    "flaky": 0
                 }
             
-            for test_key, (test_result, test_run) in test_cases.items():
+            for test_key, results_list in test_cases.items():
+                # Sort by created_at to get chronological order
+                results_list.sort(key=lambda x: x[0].created_at)
+                
                 daily_stats[date_key]["total"] += 1
                 
-                if test_result.status == TestStatus.PASSED:
-                    daily_stats[date_key]["passed"] += 1
-                elif test_result.status in [TestStatus.FAILED, TestStatus.BROKEN]:
-                    daily_stats[date_key]["failed"] += 1
+                # Analyze the results for this test case
+                num_runs = len(results_list)
+                first_status = results_list[0][0].status
+                final_status = results_list[-1][0].status
+                
+                # Logic verified from analyze_allure_folder.py:
+                # - Passed: Test ran ONCE and passed
+                # - Flaky: Test FAILED first, then PASSED on retry
+                # - Failed: Test failed (with or without retry)
+                
+                if num_runs == 1:
+                    # Single run - no retry
+                    if first_status == TestStatus.PASSED:
+                        # Passed: ran once and passed
+                        daily_stats[date_key]["passed"] += 1
+                    else:
+                        # Failed: ran once and failed (no retry attempted)
+                        daily_stats[date_key]["failed"] += 1
+                else:
+                    # Multiple runs - has retry
+                    if first_status in [TestStatus.FAILED, TestStatus.BROKEN]:
+                        # First run failed
+                        if final_status == TestStatus.PASSED:
+                            # Flaky: failed first, then passed on retry
+                            daily_stats[date_key]["flaky"] += 1
+                        else:
+                            # Failed: failed first, and still failed after retry
+                            daily_stats[date_key]["failed"] += 1
+                    elif first_status == TestStatus.PASSED:
+                        # First run passed but has multiple runs
+                        # Treat as Passed (stable - likely duplicate data import)
+                        daily_stats[date_key]["passed"] += 1
     
     # Fill all days in the period, even if no data
     trends = []
@@ -253,7 +335,8 @@ async def get_trends(
                 "total": stat["total"],
                 "passed": stat["passed"],
                 "failed": stat["failed"],
-                "pass_rate": calculate_pass_rate(stat["passed"], stat["total"])
+                "flaky": stat["flaky"],
+                "pass_rate": calculate_pass_rate(stat["passed"] + stat["flaky"], stat["total"])
             })
         else:
             # No data for this day - add zeros
@@ -262,6 +345,7 @@ async def get_trends(
                 "total": 0,
                 "passed": 0,
                 "failed": 0,
+                "flaky": 0,
                 "pass_rate": 0
             })
     

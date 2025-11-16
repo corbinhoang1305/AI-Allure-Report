@@ -35,6 +35,7 @@ export default function DashboardPage() {
             date: trend.date,
             passed: trend.passed || 0,
             failed: trend.failed || 0,
+            flaky: trend.flaky || 0,  // Add flaky field
           }));
           
           // Transform failed_tests_data to ensure allureUuid is properly set

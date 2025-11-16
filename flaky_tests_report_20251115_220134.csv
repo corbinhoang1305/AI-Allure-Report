@@ -1,0 +1,5 @@
+﻿"Name","FullName","TestCaseId","Occurrences","Statuses"
+"should allow admin to update users","users/users.permissions.spec.ts#Users - Permission Tests Admin Role Privileges should allow admin to update users","9db43693583994d37eb2e3ddcb9f60d3","3","failed, passed"
+"should fail to create user with missing required field","users/users.crud.spec.ts#Users - CRUD Operations Create User should fail to create user with missing required field","eef530b7628cb26cf2444870d4c5bf6b","2","passed, failed"
+"should allow admin to change user role","users/users.permissions.spec.ts#Users - Permission Tests Cross-Role Scenarios should allow admin to change user role","3ab4b135fdf28ab8ac44ff8eaef9ffc2","2","failed, passed"
+"should update user with valid data as admin","users/users.crud.spec.ts#Users - CRUD Operations Update User should update user with valid data as admin","5d2deda4f86b9b1e9b338bfb98ce76a8","2","failed, passed"
