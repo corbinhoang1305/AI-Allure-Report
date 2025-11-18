@@ -91,55 +91,74 @@ export function TrendChart({ data }: TrendChartProps) {
   const handleLegendClick = (dataKey: string) => {
     setHiddenSeries(prev => {
       const newSet = new Set(prev);
+      
+      // Toggle: Nếu đang hidden thì show, nếu đang show thì hide
       if (newSet.has(dataKey)) {
-        newSet.delete(dataKey);
+        newSet.delete(dataKey); // Show lại
       } else {
-        newSet.add(dataKey);
+        newSet.add(dataKey); // Hide đi
       }
+      
       return newSet;
     });
   };
 
-  // Custom Legend Component
+  // Custom Legend Component - Always show all 3 buttons regardless of payload
   const CustomLegend = ({ payload }: any) => {
-    return (
-      <div className="flex flex-wrap justify-center gap-6 mt-6">
-        {payload.map((entry: any, index: number) => {
-          const isHidden = hiddenSeries.has(entry.dataKey);
+    // Define all series statically so buttons never disappear
+    const allSeries = [
+      { dataKey: 'passed', name: 'Passed', color: '#10b981' },
+      { dataKey: 'flaky', name: 'Flaky', color: '#f59e0b' },
+      { dataKey: 'failed', name: 'Failed', color: '#ef4444' }
+    ];
+    
           const icons: Record<string, string> = {
             passed: '✅',
             flaky: '⚠️',
             failed: '❌'
           };
+    
           const descriptions: Record<string, string> = {
             passed: 'Stable tests - passed on first run',
             flaky: 'Unstable tests - failed then passed',
             failed: 'Failed tests - needs attention'
           };
+    
+    return (
+      <div className="flex flex-wrap justify-center gap-6 mt-6">
+        {allSeries.map((series, index) => {
+          const isHidden = hiddenSeries.has(series.dataKey);
+          const tooltipText = descriptions[series.dataKey] + 
+            (isHidden ? ' (Click to show)' : ' (Click to hide)');
           
           return (
             <button
-              key={index}
-              onClick={() => handleLegendClick(entry.dataKey)}
-              className={`group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+              key={series.dataKey}
+              onClick={() => handleLegendClick(series.dataKey)}
+              className={`group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 cursor-pointer ${
                 isHidden 
-                  ? 'bg-gray-800/30 opacity-40' 
-                  : 'bg-gray-800/50 hover:bg-gray-800/70 shadow-lg'
+                  ? 'bg-gray-700/40 hover:bg-gray-700/60 border-2 border-gray-600' 
+                  : 'bg-gray-800/50 hover:bg-gray-800/70 shadow-lg hover:scale-105 border-2 border-transparent'
               }`}
-              title={descriptions[entry.dataKey]}
+              title={tooltipText}
+              style={{ 
+                opacity: isHidden ? 0.6 : 1
+              }}
             >
-              <span className="text-lg">{icons[entry.dataKey]}</span>
+              <span className={`text-lg transition-all ${isHidden ? 'grayscale' : ''}`}>
+                {icons[series.dataKey]}
+              </span>
               <div className="flex flex-col items-start">
                 <span 
-                  className={`text-sm font-semibold transition-opacity ${
+                  className={`text-sm font-semibold transition-all ${
                     isHidden ? 'line-through' : ''
                   }`}
-                  style={{ color: isHidden ? '#666' : entry.color }}
+                  style={{ color: isHidden ? '#999' : series.color }}
                 >
-                  {entry.value}
+                  {series.name}
                 </span>
                 <span className="text-xs text-gray-500 hidden group-hover:block">
-                  {descriptions[entry.dataKey]}
+                  {descriptions[series.dataKey]}
                 </span>
               </div>
             </button>

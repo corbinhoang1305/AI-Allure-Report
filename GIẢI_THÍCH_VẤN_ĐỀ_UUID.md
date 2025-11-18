@@ -79,3 +79,5 @@ Xem chi tiết trong file `MIGRATION_GUIDE_ALLURE_UUID.md`
 - ⚠️ **Cần migration**: Chạy database migration để thêm cột mới
 - 📝 **Lưu ý**: Các test đã import trước đó sẽ không có `allure_uuid` (NULL)
 
+
+

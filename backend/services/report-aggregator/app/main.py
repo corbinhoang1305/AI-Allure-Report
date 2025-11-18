@@ -331,29 +331,9 @@ async def startup_event():
     """Initialize on startup"""
     await init_db()
     
-    # Start scheduler for automatic folder scanning
-    logger.info(f"📂 Auto-scan folder: {settings.ALLURE_REPORTS_PATH}")
-    logger.info(f"⏰ Auto-scan interval: {SCAN_INTERVAL_MINUTES} minutes")
-    
-    scheduler.add_job(
-        auto_scan_and_import,
-        'interval',
-        minutes=SCAN_INTERVAL_MINUTES,
-        id='auto_scan_allure_reports',
-        replace_existing=True
-    )
-    
-    # Run initial scan after a short delay
-    async def delayed_scan():
-        await asyncio.sleep(5)
-        await auto_scan_and_import()
-    
-    asyncio.create_task(delayed_scan())
-    
-    # Start scheduler
-    scheduler.start()
-    
-    logger.info("✅ Report Aggregator Service started with auto-scan enabled")
+    # Auto-scan is now handled by report-watcher service
+    # This service only provides API endpoints for manual upload
+    logger.info("✅ Report Aggregator Service started (API mode - auto-scan disabled)")
 
 
 @app.on_event("shutdown")

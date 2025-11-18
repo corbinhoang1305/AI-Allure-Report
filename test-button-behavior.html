@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Button Behavior</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111827;
+            color: white;
+            padding: 40px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .buttons {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .legend-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .legend-button.active {
+            background: rgba(31, 41, 55, 0.5);
+            opacity: 1;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .legend-button.active:hover {
+            background: rgba(31, 41, 55, 0.7);
+            transform: scale(1.05);
+        }
+        .legend-button.hidden {
+            background: rgba(31, 41, 55, 0.2);
+            opacity: 0.3;
+        }
+        .legend-button.hidden:hover {
+            opacity: 0.5;
+        }
+        .icon {
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        .hidden .icon {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+        .text {
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .hidden .text {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+        .status {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            margin: 20px 0;
+        }
+        .info {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        h1 {
+            text-align: center;
+            color: #10b981;
+        }
+        .test-case {
+            background: rgba(31, 41, 55, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Historical Chart Button Behavior</h1>
+        
+        <div class="info">
+            <strong>Expected Behavior:</strong>
+            <ul>
+                <li>✅ Click button → Toggle (hide/show)</li>
+                <li>✅ Hidden button has opacity 30%, grayscale icon, line-through text</li>
+                <li>✅ Hidden button is STILL CLICKABLE (cursor: pointer)</li>
+                <li>✅ Can hide all 3 buttons</li>
+                <li>✅ Click hidden button → Show again</li>
+                <li>✅ No "disabled" state</li>
+            </ul>
+        </div>
+
+        <div class="buttons">
+            <button class="legend-button active" data-key="passed">
+                <span class="icon">✅</span>
+                <span class="text" style="color: #10b981;">Passed</span>
+            </button>
+            <button class="legend-button active" data-key="flaky">
+                <span class="icon">⚠️</span>
+                <span class="text" style="color: #f59e0b;">Flaky</span>
+            </button>
+            <button class="legend-button active" data-key="failed">
+                <span class="icon">❌</span>
+                <span class="text" style="color: #ef4444;">Failed</span>
+            </button>
+        </div>
+
+        <div class="status" id="status">
+            Status: All buttons active
+        </div>
+
+        <div class="test-case">
+            <h3>Test Case 1: Hide One Button</h3>
+            <ol>
+                <li>Click "Passed" button</li>
+                <li>✅ Button becomes dim (opacity 30%)</li>
+                <li>✅ Icon becomes grayscale</li>
+                <li>✅ Text has line-through</li>
+                <li>✅ Button is STILL CLICKABLE</li>
+            </ol>
+        </div>
+
+        <div class="test-case">
+            <h3>Test Case 2: Hide All Buttons</h3>
+            <ol>
+                <li>Click all 3 buttons</li>
+                <li>✅ All buttons become dim</li>
+                <li>✅ All buttons are STILL VISIBLE and CLICKABLE</li>
+                <li>✅ No button is disabled</li>
+            </ol>
+        </div>
+
+        <div class="test-case">
+            <h3>Test Case 3: Show Back</h3>
+            <ol>
+                <li>After hiding all, click any dim button</li>
+                <li>✅ Button becomes bright again</li>
+                <li>✅ Can show all buttons back</li>
+                <li>✅ No reload needed</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const buttons = document.querySelectorAll('.legend-button');
+        const statusDiv = document.getElementById('status');
+        const hiddenSet = new Set();
+
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const key = button.dataset.key;
+                
+                // Simple toggle
+                if (hiddenSet.has(key)) {
+                    hiddenSet.delete(key);
+                    button.classList.remove('hidden');
+                    button.classList.add('active');
+                } else {
+                    hiddenSet.add(key);
+                    button.classList.remove('active');
+                    button.classList.add('hidden');
+                }
+
+                updateStatus();
+            });
+        });
+
+        function updateStatus() {
+            const activeCount = 3 - hiddenSet.size;
+            const hiddenCount = hiddenSet.size;
+            
+            let status = '';
+            if (activeCount === 3) {
+                status = 'Status: All buttons active ✅';
+            } else if (activeCount === 0) {
+                status = 'Status: All buttons hidden ⚠️ (But still clickable! Click any button to show)';
+            } else {
+                status = `Status: ${activeCount} active, ${hiddenCount} hidden`;
+            }
+            
+            statusDiv.textContent = status;
+        }
+    </script>
+</body>
+</html>
+

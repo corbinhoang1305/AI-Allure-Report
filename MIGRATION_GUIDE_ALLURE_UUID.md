@@ -84,3 +84,5 @@ Sau khi migration, bạn có thể:
 - Các test results mới import sau migration sẽ có `allure_uuid`
 - Để backfill data cũ, cần re-import các test results từ result.json files
 
+
+

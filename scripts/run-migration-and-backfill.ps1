@@ -79,3 +79,5 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "✅ All done! Refresh your browser to see Allure UUID" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 
+
+

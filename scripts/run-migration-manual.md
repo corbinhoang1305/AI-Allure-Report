@@ -73,3 +73,5 @@ WHERE table_name = 'test_results' AND column_name = 'allure_uuid';
 2. Kiểm tra UUID hiển thị đúng chưa
 3. Nếu vẫn sai, chạy backfill script để update UUID từ JSON files
 
+
+

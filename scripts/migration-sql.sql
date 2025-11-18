@@ -43,3 +43,5 @@ SELECT
 FROM pg_indexes 
 WHERE tablename = 'test_results' AND indexname = 'ix_test_results_allure_uuid';
 
+
+

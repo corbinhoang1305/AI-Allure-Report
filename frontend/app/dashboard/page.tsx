@@ -30,25 +30,6 @@ export default function DashboardPage() {
           // Backend returned dashboard data
           const backendData = dashboardResponse.data;
           
-          // Transform backend trends data to match frontend format
-          const transformedTrends = (backendData.recent_trends || []).map((trend: any) => ({
-            date: trend.date,
-            passed: trend.passed || 0,
-            failed: trend.failed || 0,
-            flaky: trend.flaky || 0,  // Add flaky field
-          }));
-          
-          // Transform failed_tests_data to ensure allureUuid is properly set
-          const transformedFailedTests = (backendData.failed_tests_data || []).map((test: any) => ({
-            ...test,
-            // Backend should return allureUuid (Allure UUID from JSON file)
-            // If backend has allureUuid, use it (even if empty string means not set)
-            // DO NOT use uuid as fallback for allureUuid - uuid is Database UUID!
-            allureUuid: test.allureUuid || '',
-            // Keep uuid as database UUID (separate from Allure UUID)
-            uuid: test.uuid || ''
-          }));
-
           // Transform backend data to match frontend format
           setDashboardData({
             overall_health: backendData.overall_health || {
@@ -58,11 +39,11 @@ export default function DashboardPage() {
               failed: 0,
               avg_duration_ms: 0,
             },
-            recent_trends: transformedTrends,
+            recent_trends: backendData.recent_trends || [],
             projects: backendData.projects || [],
             flaky_tests: backendData.flaky_tests || [],
             failed_test_names: backendData.failed_test_names || [],
-            failed_tests_data: transformedFailedTests,
+            failed_tests_data: backendData.failed_tests_data || [],
             recent_runs: backendData.recent_runs || [],
           });
           
@@ -156,15 +137,7 @@ export default function DashboardPage() {
         // Extract failed test data (full objects) for AI insights
         const failedTestsData = results
           .filter((r: any) => r.status === 'failed' || r.status === 'broken')
-          .slice(0, 10) // Keep up to 10 failed tests for details view
-          .map((r: any) => ({
-            ...r,
-            // UUID from JSON file IS the Allure UUID - map it correctly
-            allureUuid: r.uuid || r.allureUuid || '',
-            // For local files, uuid is the Allure UUID (not database UUID)
-            // So we set both to the same value
-            uuid: r.uuid || ''
-          }));
+          .slice(0, 10); // Keep up to 10 failed tests for details view
         
         const failedTestNames = failedTestsData
           .map((r: any) => r.name)
